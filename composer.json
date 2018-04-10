@@ -13,7 +13,11 @@
     "require": {},
     "autoload": {
         "psr-4": {
+<<<<<<< HEAD
             "Wpkenpachi\\Wpfilterlist\\": "src"
+=======
+            "Wpkenpachi\\Wpfilterlist\\": "src/"
+>>>>>>> 1d8fa5c176853b50ba9348008163d3c0df480442
         }
     }
 }
