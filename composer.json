@@ -1,0 +1,14 @@
+{
+    "name": "wpkenpachi/wpfilterlist",
+    "description": "Biblioteca para agrupamento e ordenacao de resultados ( Sistema de Filtro para resultados )",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Wpkenpachi",
+            "email": "angelportinari17@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
