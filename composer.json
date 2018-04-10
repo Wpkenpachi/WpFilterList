@@ -19,7 +19,6 @@
             "email": "angelportinari17@gmail.com"
         }
     ],
-    "minimum-stability": "dev",
     "require": {
         "php": ">=5.3.0",
         "laravel": ">=5.4.0"
