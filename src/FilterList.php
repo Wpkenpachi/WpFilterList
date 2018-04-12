@@ -38,8 +38,12 @@ class FilterList extends Controller
         return (new self())->__boot($array);
     }
 
-    public function agrupamentos(array $agrupamentos){
-        $this->agrupamentos = $agrupamentos;
+    public function agrupamentos($agrupamentos){
+        if( is_array($agrupamentos) ){
+            $this->agrupamentos = $agrupamentos;
+        }else{
+            $this->agrupamentos[] = func_get_args();
+        }
         $this->countAgrupamentos = count( $agrupamentos );
         return $this;
     }
@@ -103,19 +107,23 @@ class FilterList extends Controller
         $_array = [];
         $_array_plano = [];
         $_counter = 0;
+
+        $counter = 0;
+        
         foreach( $this->agrupamentos as $agrupamento => $valor){
-            $_counter++;
+
             // É um array de formas de agrupamento
-            if( is_array( $valor ) )
-            {
+            if( is_array( $valor ) ){
+                $counter = $agrupamento + 1;
                 $chaves_agrupamento =@ array_keys( $valor );
                 foreach( $this->input as $input ){
                     $chaves_array = array_keys( $input );
-                    if( $this->arrayAlreadyExists( $chaves_array, $chaves_agrupamento)->leftIsNotInsideCount > 0 ){
-                        die($this->error('agrupamento_param_nao_existe'));
+    
+                    if( $this->arrayAlreadyExists( $chaves_array, $chaves_agrupamento, 1)->leftIsNotInsideCount > 0 ){
+                        exit($this->error('agrupamento_param_nao_existe', $this->arrayAlreadyExists( $chaves_array, $chaves_agrupamento, 1)->leftIsNotInside));
                     }
-
-
+    
+    
                     $countIntersec = count(array_intersect_assoc( $input, $valor ));
                     $countRules    = count( $valor );
                     if( $countIntersec == $countRules && $this->arrayAlreadyExists( [$input], $_array_plano)->leftIsInsideCount <= 0 ){
@@ -123,11 +131,24 @@ class FilterList extends Controller
                         $_array[$agrupamento][] = $input;
                     }
                 }
+            }else{
+                foreach( $this->input as $input ){
+                    $agrupamentos[$agrupamento] = $valor;
+                    $chaves_array = array_keys( $input );
+                    $check = $this->arrayAlreadyExists( $chaves_array, [$agrupamento], 1);
+                    if( $check->leftIsNotInsideCount > 0 ){
+                        exit( $this->error('agrupamento_param_nao_existe', $check->leftIsNotInside) );
+                    }
 
+                    $countIntersec = count(array_intersect_assoc( $input, $agrupamentos ));
+                    $countRules    = count( $agrupamentos );
+                    if( $countIntersec == $countRules && $this->arrayAlreadyExists( [$input], $_array_plano)->leftIsInsideCount <= 0 ){
+                        $_array_plano[] = $input;
+                        $_array[ $counter ][] = $input;
+                    }
+                }
             }
         }
-
-        
 
         $this->agrupados = $_array;
         $this->agrupados[] = $this->arrayAlreadyExists($this->input, $_array_plano)->rightIsNotInside; // INDEFINIDOS
@@ -156,7 +177,7 @@ class FilterList extends Controller
 
                 }else
                 {
-                    $this->error('ordenamento_param_nao_existente');
+                    exit( $this->error('ordenamento_param_nao_existente', $chave) );
                 }
     
                 if( in_array($_current_order, $_parametros_conhecidos) )
@@ -170,13 +191,19 @@ class FilterList extends Controller
 
     private function ordemAscDesc(array $array, $item, $ordem = 'asc'){
         $tipo_ordenamento = $ordem == 'asc' ? SORT_ASC : SORT_DESC;
-        
+
         if( $tipo_ordenamento == SORT_ASC ){
             usort($array, function ($a, $b) use ($item, $ordem){
+                    if( !array_key_exists($item, $a) && !array_key_exists($item, $b) ){
+                        throw new \Exception("Chave ({$item}) nao existe nos ordenamentos.", 1);
+                    }
                     return $a[ $item ] - $b[ $item ];
             });
         }else{
             usort($array, function ($a, $b) use ($item, $ordem){
+                if( !array_key_exists($item, $a) && !array_key_exists($item, $b) ){
+                    throw new \Exception("Chave ({$item}) nao existe nos ordenamentos.", 1);
+                }
                 return $b[ $item ] - $a[ $item ];
             });
         }
@@ -187,14 +214,20 @@ class FilterList extends Controller
 
     public function arrayAlreadyExists(array $array_target, array $array_list, $result = null){
         $_result = [];
-        $_counter_isNotInside = 0;
-        $_counter_isInside = 0;
     
-        $left = function() use (&$_result, &$_counter_isNotInside, &$_counter_isInside, &$array_target, &$array_list){
+        $left = function() use (&$_result, &$array_target, &$array_list){
+            $_counter_isNotInside = 0;
+            $_counter_isInside = 0;
+
+            $_result['leftIsNotInside'] = [];
+            $_result['leftIsInside'] = [];
+            $_result['leftIsNotInsideCount'] = 0;
+            $_result['leftIsInsideCount'] = 0;
+
             foreach($array_list as $item){
                 $_notFound = 1;
                 foreach($array_target as $target){
-                    
+                    $_isEqual = 0;
                     if( is_array($item) && is_array($target) ){
                         $_HowManyEqual = array_intersect_assoc($target, $item);
                         $_isEqual = count( array_values($_HowManyEqual) ) == count( array_keys($item) );
@@ -207,30 +240,37 @@ class FilterList extends Controller
                         $_notFound = 0;
                     }
                 }
-                
-                if( $_notFound ){
-                    $_counter_isNotInside++;
+
+                if( $_notFound == 1 ){
+                    //$_counter_isNotInside++;
                     $_result['leftIsNotInside'][] = $item;
                     
                 }else{
-                    $_counter_isInside++;
+                    //$_counter_isInside++;
                     $_result['leftIsInside'][] = $item;
                 }
             }
-            $_result['leftIsNotInsideCount'] = $_counter_isNotInside;
-            $_result['leftIsInsideCount'] = $_counter_isInside;
+            $_result['leftIsNotInsideCount'] = count( $_result['leftIsNotInside'] );
+            $_result['leftIsInsideCount'] = count( $_result['leftIsInside'] );
         };
         
-        $right = function() use (&$_result, &$_counter_isNotInside, &$_counter_isInside, &$array_target, &$array_list){
+        $right = function() use (&$_result, &$array_target, &$array_list){
+            $_counter_isNotInside = 0;
+            $_counter_isInside = 0;
+            $_result['rightIsNotInside'] = [];
+            $_result['rightIsInside'] = [];
+            $_result['rightIsNotInsideCount'] = 0;
+            $_result['rightIsInsideCount'] = 0;
+
             foreach($array_target as $target){
                 $_notFound = 1;
                 foreach($array_list as $item){
                     
                     if( is_array($item) && is_array($target) ){
-                        $_HowManyEqual = array_intersect_assoc($item, $target);
+                        $_HowManyEqual = array_intersect_assoc( $item, $target );
                         $_isEqual = count( array_keys($_HowManyEqual) ) == count( array_keys($item) );
                     }else{
-                        $_HowManyEqual = array_intersect_assoc([$item], [$target]);
+                        $_HowManyEqual = array_intersect_assoc( [$item], [$target] );
                         $_isEqual = count( array_values($_HowManyEqual) ) == count( array_values([$item]) );
                     }
                     
@@ -240,16 +280,16 @@ class FilterList extends Controller
                 }
                 
                 if( $_notFound ){
-                    $_counter_isNotInside++;
+                    // $_counter_isNotInside++;
                     $_result['rightIsNotInside'][] = $target;
                     
                 }else{
-                    $_counter_isInside++;
+                    // $_counter_isInside++;
                     $_result['rightIsInside'][] = $target;
                 }
             }
-            $_result['rightIsNotInsideCount'] = $_counter_isNotInside;
-            $_result['rightIsInsideCount'] = $_counter_isInside;
+            $_result['rightIsNotInsideCount'] = count( $_result['rightIsNotInside'] );
+            $_result['rightIsInsideCount'] = count( $_result['rightIsInside'] );
         };
             
         if( $result == 1 ){
@@ -269,20 +309,21 @@ class FilterList extends Controller
     }
 
 
-    private function error($errno){
+    private function error($errno, $params = null){
+        $_params = null;
+        if( !is_null($params) ){
+            if( is_array($params) ){
+                $_params = implode( ',', $params );
+            }else{
+                $_params = $params;
+            }
+        }
         switch( $errno ){
             case 'agrupamento_param_nao_existe':
-                return json_encode([
-                    'status' => 0,
-                    'error'  => 'Parametro de agrupamento nao existente'
-                ]);
+                throw new \Exception("Parametro(s) " . ($_params ? "({$_params})" : '' ). " de agrupamento nao existente ou informado de forma incorreta", 1);
                 break;
-            
             case 'ordenamento_param_nao_existente':
-                return json_encode([
-                    'status' => 0,
-                    'error'  => 'Parametro de ordenamento nao existente'
-                ]);
+                throw new \Exception("Parametro(s) " . ($_params ? "({$_params})" : '') . " de ordenamento nao existente", 1);
                 break;
 
             default:
