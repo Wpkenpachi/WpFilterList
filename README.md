@@ -73,7 +73,7 @@ $ composer require wpkenpachi/wpfilterlist
     ];   
 
 
-    $filtrados = Wpkenpachi\Wpfilterlist\FilterLis::boot( $array )->agrupamentos( $grupos ) ;
+    $filtrados = Wpkenpachi\Wpfilterlist\FilterList::boot( $array )->agrupamentos( $grupos ) ;
 
 ```
 
@@ -95,12 +95,12 @@ $ composer require wpkenpachi/wpfilterlist
         'status' => 'desc' // a ordenação do grupo 2 é decrescente
     ];
 
-    $filtrados = Wpkenpachi\Wpfilterlist\FilterLis::boot( $array )->agrupamentos( $grupos )->ordenamentos( $ordens ) ;
+    $filtrados = Wpkenpachi\Wpfilterlist\FilterList::boot( $array )->agrupamentos( $grupos )->ordenamentos( $ordens ) ;
 
 ```
 
 - get ( ) ;
 ```php
 // Método usado para retornar os resultados
-    $filtrados = Wpkenpachi\Wpfilterlist\FilterLis::boot( $array )->agrupamentos( $grupos )->ordenamentos( $ordens )->get();
+    $filtrados = Wpkenpachi\Wpfilterlist\FilterList::boot( $array )->agrupamentos( $grupos )->ordenamentos( $ordens )->get();
 ```
